@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CONTEXT_MAX, contextLoad, useHarness } from "@/lib/harness/store";
 import { JUDGMENT, ROLES, SKILLS } from "@/lib/harness/seed";
-import { voiceReview } from "@/lib/harness/voice";
+import { voiceReview, frontSpeak } from "@/lib/harness/voice";
 import type { Mode, Step, Task, TaskStatus } from "@/lib/harness/types";
 import { cn } from "@/lib/cn";
 
@@ -78,6 +78,31 @@ export function LatticeApp() {
     });
   }, [pendingVoice, patchReview]);
 
+  const pendingChat = tasks.find(
+    (t) =>
+      grokVoice &&
+      !t.voiced &&
+      t.kind === "chat" &&
+      t.status === "done" &&
+      t.id !== "t0" &&
+      !t.route.startsWith("interrupt"),
+  );
+
+  useEffect(() => {
+    if (!pendingChat || tried.current.has(`chat:${pendingChat.id}`)) return;
+    tried.current.add(`chat:${pendingChat.id}`);
+    void frontSpeak({
+      data: {
+        utterance: pendingChat.utterance,
+        draft: pendingChat.goal,
+        role: pendingChat.roleId,
+      },
+    }).then((res) => {
+      if (res.ok) patchReview(pendingChat.id, res.text);
+      else useHarness.setState({ grokNote: res.error });
+    });
+  }, [pendingChat, patchReview]);
+
   const load = contextLoad(tasks, memory);
   const hot = load / CONTEXT_MAX >= 0.75;
 
@@ -116,7 +141,7 @@ function Header({ load, hot }: { load: number; hot: boolean }) {
         </span>
         <div className="min-w-0">
           <h1 className="text-base font-medium tracking-wide">织衡</h1>
-          <p className="truncate text-xs text-muted">对话只下单。任务才执行。</p>
+          <p className="truncate text-xs text-muted">闲聊只回，不交执行。任务才改文件。</p>
         </div>
         <p className="ml-auto font-mono text-xs text-muted">{presenceLabel}</p>
       </div>
@@ -236,7 +261,7 @@ function TaskPane({ activeId }: { activeId: string | null }) {
     <section className={cn("flex h-full min-h-0 flex-col", tab !== "run" && "max-[959px]:hidden")}>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <p className="mb-4 max-w-2xl text-sm text-muted">
-          前脑收单、抢占、验收。后脑跑工具。没有目标的句子不会进循环。沙箱里的文件才算数。
+          没有任务时只回话。执行途中的闲聊只旁路；说「停」或下一个任务才会打断并回滚。沙箱里的文件才算数。
         </p>
         {notice ? <p className="mb-3 text-sm text-brass">{notice}</p> : null}
         <ol className="flex flex-col gap-3">
@@ -252,7 +277,9 @@ function TaskPane({ activeId }: { activeId: string | null }) {
 }
 
 function TaskCard({ task, active }: { task: Task; active: boolean }) {
-  const [open, setOpen] = useState(task.status === "running" || task.status === "awaiting");
+  const [open, setOpen] = useState(
+    task.status === "running" || task.status === "awaiting" || task.kind === "chat",
+  );
   const done = task.steps.slice(0, task.revealed);
   const pending = task.status === "running" || task.status === "awaiting" ? task.steps[task.revealed] : undefined;
 
@@ -289,7 +316,7 @@ function TaskCard({ task, active }: { task: Task; active: boolean }) {
           {pending ? (
             <div className="mt-3 border border-line bg-bg px-3 py-3">
               <p className="font-mono text-xs text-brass">
-                {pending.brain === "front" ? "前脑" : "后脑"} · {pending.title}
+                {pending.brain === "front" ? "回话" : "执行"} · {pending.title}
               </p>
               <p className="mt-1 text-sm text-muted">{pending.detail}</p>
               {pending.planGate || pending.writes ? <Approval step={pending} /> : null}
@@ -309,7 +336,7 @@ function StepRow({ step }: { step: Step }) {
   return (
     <li className="border border-line bg-bg px-3 py-2">
       <p className={cn("font-mono text-xs", tone)}>
-        {step.brain === "front" ? "前脑" : "后脑"} · {step.title} · {step.status}
+        {step.brain === "front" ? "回话" : "执行"} · {step.title} · {step.status}
       </p>
       {step.output ? <Output text={step.output} /> : <p className="mt-1 text-xs text-muted">{step.detail}</p>}
     </li>
@@ -401,7 +428,11 @@ function Composer() {
             <textarea
               value={text}
               rows={2}
-              placeholder={playing ? "插话会抢占未验收的执行，并回滚它的写入" : "下目标，而不是闲聊"}
+              placeholder={
+                playing
+                  ? "闲聊会旁路回复，不打断执行。说「停」或下一个任务才会打断"
+                  : "闲聊会回。要查、要改、要计划，直接说目标"
+              }
               className="w-full resize-none border border-line bg-surface px-3 py-2 text-sm text-fg outline-none placeholder:text-muted"
               onChange={(event) => setText(event.target.value)}
               onKeyDown={(event) => {
@@ -503,21 +534,10 @@ function Spec() {
         </p>
       ))}
       <ul className="flex flex-col gap-2 text-sm text-muted">
-        <li>NORA：前脑说话，后脑干活。抢占、四层记忆、敏感确认、沙箱、熔断。</li>
-        <li>Deva：一个对话入口。系统规范大于角色。exit_plan、只读子任务、/rewind、75% 压缩。</li>
-        <li>冲突裁决：确认或直跑可切换。沙箱和危险命令不能关。</li>
+        <li>回话只听、答、审查。执行才碰文件和命令。</li>
+        <li>提问不写。大改先交计划。只读步骤同一拍完成。</li>
+        <li>确认或直跑可切换。沙箱和危险命令不能关。</li>
       </ul>
-      <p className="text-xs text-muted">
-        对照{" "}
-        <a className="text-brass" href="https://github.com/captain-wangrun-cn/N.O.R.A.Core" target="_blank" rel="noreferrer">
-          NORA Core
-        </a>{" "}
-        与{" "}
-        <a className="text-brass" href="https://github.com/sqfcyily/deva" target="_blank" rel="noreferrer">
-          Deva
-        </a>
-        ，不是把两份代码并到一起。
-      </p>
       <Checkpoints />
     </div>
   );

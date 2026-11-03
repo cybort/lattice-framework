@@ -92,6 +92,49 @@ function replaceTask(tasks: Task[], id: string, next: Task): Task[] {
   return tasks.map((t) => (t.id === id ? next : t));
 }
 
+function isStop(text: string): boolean {
+  return /^(停|停下|停止|取消|别做了|别跑了)/.test(text);
+}
+
+function settleChat(task: Task): Task {
+  return {
+    ...task,
+    status: "done",
+    revealed: task.steps.length,
+    steps: task.steps.map((step) =>
+      step.status === "wait" ? { ...step, status: "ok" as const } : step,
+    ),
+  };
+}
+
+function restamp(task: Task, text: string, route: string): Task {
+  const prefix = task.review.startsWith("裁决：")
+    ? "裁决："
+    : task.review.startsWith("验收：")
+      ? "验收："
+      : "回单：";
+  return {
+    ...settleChat(task),
+    goal: text,
+    route,
+    review: prefix + text,
+    steps: task.steps.map((step) => ({
+      ...step,
+      status: "ok" as const,
+      title: "停止",
+      detail: "判为停止。未验收写入回到本任务开始时的文件。",
+      output: "动作：停止\n回滚：任务开始时的文件\n交执行：否",
+    })),
+  };
+}
+
+function activeWork(tasks: Task[], activeId: string | null): Task | null {
+  const current = tasks.find((t) => t.id === activeId);
+  if (!current) return null;
+  if (current.status !== "running" && current.status !== "awaiting") return null;
+  return current;
+}
+
 function syncSlots(memory: MemoryEntry[]): Slot[] {
   return memory.slice(-8).map((m) => ({
     key: m.text.slice(0, 12),
@@ -144,34 +187,89 @@ export const useHarness = create<HarnessStore>()(
         if (text === "/skill explore" || text === "/skill 只读") return set({ skillId: "explore" });
         if (text === "/skill off" || text === "/skill 无") return set({ skillId: "none" });
 
-        let tasks = s.tasks;
-        let files = s.files;
-        if (s.playing || s.tasks.some((t) => t.id === s.activeId && (t.status === "running" || t.status === "awaiting"))) {
-          const current = tasks.find((t) => t.id === s.activeId);
-          if (current && current.status !== "done") {
-            files = cloneFiles(current.filesAtStart);
-            tasks = replaceTask(tasks, current.id, {
-              ...current,
-              status: "preempted",
-              review: "未验收就被新任务抢占。本次写入已回滚。",
-            });
-          }
+        const current = activeWork(s.tasks, s.activeId);
+        const n = s.seq;
+        const plan = (files: VFile[]) =>
+          planTask({
+            utterance: text,
+            files,
+            mode: s.mode,
+            roleId: s.roleId,
+            skillId: s.skillId,
+            n,
+            at: Date.now(),
+          });
+
+        if (current && isStop(text)) {
+          const files = cloneFiles(current.filesAtStart);
+          const tasks = replaceTask(s.tasks, current.id, {
+            ...current,
+            status: "preempted",
+            review: "已停止。未验收的写入已回滚。",
+          });
+          const reply = "执行已停。未验收的写入已回滚。";
+          const task = restamp(plan(files), reply, "interrupt stop：回滚未验收写入");
+          set({
+            tasks: [...tasks, task],
+            files,
+            seq: n + 1,
+            activeId: task.id,
+            playing: false,
+            presence: "sealed",
+            tab: "run",
+            notice: null,
+          });
+          return;
         }
 
-        const n = s.seq;
-        const task = planTask({
-          utterance: text,
-          files,
-          mode: s.mode,
-          roleId: s.roleId,
-          skillId: s.skillId,
-          n,
-          at: Date.now(),
-        });
+        if (current) {
+          const aside = plan(s.files);
+          if (aside.kind === "chat") {
+            set({
+              tasks: [...s.tasks, settleChat(aside)],
+              seq: n + 1,
+              tab: "run",
+              notice: "闲聊已旁路。执行还在跑，写入未回滚。",
+            });
+            return;
+          }
+          const files = cloneFiles(current.filesAtStart);
+          const tasks = replaceTask(s.tasks, current.id, {
+            ...current,
+            status: "preempted",
+            review: "未验收就被新任务抢占。本次写入已回滚。",
+          });
+          const task = plan(files);
+          task.status = "running";
+          set({
+            tasks: [...tasks, task],
+            files,
+            seq: n + 1,
+            activeId: task.id,
+            playing: true,
+            presence: "exec",
+            tab: "run",
+            notice: null,
+          });
+          return;
+        }
+
+        const task = plan(s.files);
+        if (task.kind === "chat") {
+          set({
+            tasks: [...s.tasks, settleChat(task)],
+            seq: n + 1,
+            activeId: task.id,
+            playing: false,
+            presence: "sealed",
+            tab: "run",
+            notice: null,
+          });
+          return;
+        }
         task.status = "running";
         set({
-          tasks: [...tasks, task],
-          files,
+          tasks: [...s.tasks, task],
           seq: n + 1,
           activeId: task.id,
           playing: true,
@@ -193,15 +291,7 @@ export const useHarness = create<HarnessStore>()(
           get().finishTask(task.id);
           return;
         }
-        if (step.planGate) {
-          set({
-            tasks: replaceTask(s.tasks, task.id, { ...task, status: "awaiting" }),
-            playing: false,
-            presence: "exec",
-          });
-          return;
-        }
-        if (step.writes && s.gate === "confirm" && !task.precleared) {
+        if (step.planGate || (step.writes && s.gate === "confirm" && !task.precleared)) {
           set({
             tasks: replaceTask(s.tasks, task.id, { ...task, status: "awaiting" }),
             playing: false,
@@ -210,29 +300,75 @@ export const useHarness = create<HarnessStore>()(
           return;
         }
         if (step.status === "blocked") {
-          const steps = task.steps.map((st, i) => (i === task.revealed ? { ...st, status: "blocked" as const } : st));
-          const next = { ...task, steps, revealed: task.revealed + 1, status: "blocked" as const };
+          const steps = task.steps.map((st, i) =>
+            i === task.revealed ? { ...st, status: "blocked" as const } : st,
+          );
           set({
-            tasks: replaceTask(s.tasks, task.id, next),
+            tasks: replaceTask(s.tasks, task.id, {
+              ...task,
+              steps,
+              revealed: task.revealed + 1,
+              status: "blocked",
+            }),
             playing: false,
             presence: "sealed",
           });
           return;
         }
-        const applied = applyStep(s.files, s.memory, step, Date.now());
-        const steps = task.steps.map((st, i) =>
-          i === task.revealed ? { ...st, status: applied.status, output: applied.output } : st,
-        );
-        const revealed = task.revealed + 1;
-        const updated: Task = { ...task, steps, revealed, status: "running" };
+
+        let files = s.files;
+        let memory = s.memory;
+        const steps = task.steps.slice();
+        let revealed = task.revealed;
+        let blocked = false;
+        const batch = step.batch;
+
+        const take = (index: number) => {
+          const currentStep = steps[index];
+          if (currentStep.status === "blocked") {
+            blocked = true;
+            revealed = index + 1;
+            return false;
+          }
+          const applied = applyStep(files, memory, currentStep, Date.now());
+          const hint = currentStep.output?.startsWith("第三次提醒：") ? `${currentStep.output}\n` : "";
+          steps[index] = {
+            ...currentStep,
+            status: applied.status,
+            output: hint + applied.output,
+          };
+          files = applied.files;
+          memory = applied.memory;
+          revealed = index + 1;
+          if (applied.status === "blocked") {
+            blocked = true;
+            return false;
+          }
+          return true;
+        };
+
+        if (take(revealed) && batch) {
+          while (revealed < steps.length) {
+            const next = steps[revealed];
+            if (next.batch !== batch || next.writes || next.planGate) break;
+            if (!take(revealed)) break;
+          }
+        }
+
         set({
-          tasks: replaceTask(s.tasks, task.id, updated),
-          files: applied.files,
-          memory: applied.memory,
-          slots: syncSlots(applied.memory),
+          tasks: replaceTask(s.tasks, task.id, {
+            ...task,
+            steps,
+            revealed,
+            status: blocked ? "blocked" : "running",
+          }),
+          files,
+          memory,
+          slots: syncSlots(memory),
+          ...(blocked ? { playing: false, presence: "sealed" as const } : {}),
         });
-        if (applied.status === "blocked" || revealed >= steps.length) {
-          get().finishTask(task.id, applied.status === "blocked" ? "blocked" : undefined);
+        if (blocked || revealed >= steps.length) {
+          get().finishTask(task.id, blocked ? "blocked" : undefined);
         }
       },
 
@@ -378,7 +514,12 @@ export const useHarness = create<HarnessStore>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
         set({
-          tasks: replaceTask(get().tasks, id, { ...task, review: text, voiced: true }),
+          tasks: replaceTask(get().tasks, id, {
+            ...task,
+            review: text,
+            goal: task.kind === "chat" ? text : task.goal,
+            voiced: true,
+          }),
           grokNote: null,
         });
       },
@@ -389,7 +530,11 @@ export const useHarness = create<HarnessStore>()(
         if (!task) return;
         const blocked = force === "blocked" || task.steps.some((st) => st.status === "blocked");
         const status = blocked ? "blocked" : task.status === "rejected" ? "rejected" : "done";
-        const done: Task = { ...task, status, revealed: Math.max(task.revealed, task.steps.length) };
+        const done: Task = {
+          ...task,
+          status,
+          revealed: blocked ? task.revealed : Math.max(task.revealed, task.steps.length),
+        };
         const changed = JSON.stringify(s.files) !== JSON.stringify(task.filesAtStart);
         const checkpoints = [...s.checkpoints];
         if (changed && status === "done") {
@@ -410,7 +555,7 @@ export const useHarness = create<HarnessStore>()(
       },
     }),
     {
-      name: "lattice-harness-v1",
+      name: "lattice-harness-v2",
       skipHydration: true,
       partialize: (s) => ({
         tasks: s.tasks,

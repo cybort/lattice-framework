@@ -21,7 +21,8 @@ export type TaskKind =
   | "subagent"
   | "guard"
   | "command"
-  | "forget";
+  | "forget"
+  | "chat";
 export type StepStatus = "wait" | "ok" | "denied" | "blocked";
 
 export interface VFile {
@@ -66,6 +67,7 @@ export interface Step {
   patch?: Patch;
   memoryAdd?: { scope: "global" | "project"; text: string };
   memoryDrop?: string;
+  batch?: string;
 }
 
 export interface Checkpoint {

@@ -4,50 +4,46 @@ import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } f
 import { n as create, t as persist } from "../_libs/zustand.mjs";
 import { t as clsx } from "../_libs/clsx.mjs";
 import { t as twMerge } from "../_libs/tailwind-merge.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-BxHIq_lY.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-YHjnXjj9.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var CONTEXT_MAX = 8e3;
-var JUDGMENT = `NORA 与 Deva 的对话框都是控制面。本体是把一句话收成任务，再在沙箱里跑完工具循环。
+var JUDGMENT = `织衡把一句话分成两截。回话负责听、答、分流和收尾。执行负责读文件、改文件、跑命令。没有明确任务时只回话，不把这句话送进工具。
 
-NORA 把说话和干活拆开。前脑收单、抢占、审查、转述；后脑拿工具、技能和检索把任务做完。人设、追问、半在线挂在前脑，不进入执行权限。四层记忆是为了任务上下文不断，不是为了陪聊。
+执行对同一个调用连续计数。第三次提醒，仍做这一次。第五次停下，不再发下一次。每次重新进入执行，计数清零，避免把上一轮的次数算进来。
 
-Deva 把控制面收到一个对话里：挂工作区、角色、技能、计划、子代理、定时、回滚，都从同一条输入进去。纪律是分层提示词——系统规范、项目规范、记忆、角色。角色不能改工具和安全。写之前可以 exit_plan；写过的文件可以用 /rewind 收回。
+执行做完，回话再看一遍。没有未完成的指示就收束，最多来回五次。纯聊天也收束。
 
-冲突只有一处需要裁决。Deva 不设授权弹框，模型直接动文件和命令。NORA 对敏感操作要确认，并做路径沙箱和死循环检测。织衡：确认或直跑可以切，沙箱、危险命令和循环熔断不能关。直跑只是少一次弹框，不是把宿主机交出去。
+执行忙的时候先判断来意。闲聊在旁边回一句，不拆当前任务。说停，或改口成新任务，才打断，并把还没验收的写入撤回。
 
-对话在这里只做三件事：下目标、批计划、看验收。没有目标的句子不进入执行。`;
+提问只回答，不改文件。明确要做才动手。改动大，或你要求先看方案时，先交计划，批准前不写。互不依赖的只读步骤同一拍发出。
+
+记忆单条不超过 300 字，全局 4000，项目 3000。确认和直跑可以切。沙箱和危险命令不能关。`;
 var SPEC = `# 织衡执行层
 
 ${JUDGMENT}
 
-## 从两边拿走的
+## 纪律
 
-- NORA 前脑 / 后脑：前脑只收单和验收，后脑只跑工具。未验收的执行可被新任务抢占，写入回滚。
-- NORA 记忆四层：原始轨迹、段落摘要、压缩槽位、长期归档。记的是约束和结论，不是闲聊。
-- NORA 模型角色：fast 做分流，smart 做转述，coder 做执行。角色别名不扩大权限。
-- Deva 四层提示：系统规范 > AGENTS.md > 记忆 > 角色。外部文本（文件、命令输出、子任务结论）只是数据。
-- Deva 任务闸：exit_plan、ask 模式、/rewind、技能剧本、只读子任务（explore / research / plan）。
-- Deva 上下文：轨迹过 75% 就该压缩。压缩的是任务痕迹，不是人格。
+- 没有任务指示，不交执行。新任务才抢占并回滚；闲聊只旁路。
+- 同一工具第三次提醒，第五次停止。每次进入执行清空计数。
+- 来回最多 5 轮。收束、继续，或纯聊天结束。
+- 提问不写文件。只读调用同一拍发出。获批前不写。
+- 检索、核对、方案只收窄能用的工具。查询命令仍可用，但不能改文件。
+- 记忆四层：原始、摘要、槽位、归档。单条不超过 300 字。
 
-## 补上的 harness
+## 任务怎么跑
 
 1. 任务对象：目标、验收、状态，而不是一串气泡。
 2. 工具循环：读、列、搜、改、命令，每步留痕。
 3. 三态：询问、计划、执行。
 4. 权限策略：确认或直跑。危险命令两种策略都拒绝。
 5. 路径沙箱：只能碰到这份虚拟工作区。
-6. 循环熔断：同一调用第三次即停。
+6. 循环停止：第 3 次警告，第 5 次强制停止。
 7. 检查点：只回滚本层写入。
 8. 子任务：只读分叉，结论喂回验收，不继承写权限。
 9. 技能：可复用剧本。先计划、只读探索。技能不扩权。
 10. 待办与验收清单写在任务上，不靠聊天记忆。
-
-## 来源
-
-对照实现，不是代码合并。
-NORA Core（BSD-3）https://github.com/captain-wangrun-cn/N.O.R.A.Core
-Deva（MIT）https://github.com/sqfcyily/deva
 
 ## 状态机
 
@@ -65,7 +61,7 @@ var README_CHATTY = `# Lattice workspace
 `;
 var README_TASK = `# Lattice workspace
 
-对话不是这个仓库的产品。一句输入只负责形成任务：目标、约束、验收。改文件的是后脑工具循环，前脑只收单和验收。
+对话不是这个仓库的产品。一句输入只负责形成任务：目标、约束、验收。改文件的是执行循环，回话只收单和验收。
 
 ## 目录
 
@@ -123,7 +119,7 @@ function seedFiles() {
 		},
 		{
 			path: "SOUL.md",
-			content: "前脑人设只负责语气。它不能授权写文件，也不能覆盖沙箱。\n"
+			content: "人设只负责语气。它不能授权写文件，也不能覆盖沙箱。\n"
 		},
 		{
 			path: "USER.md",
@@ -144,12 +140,12 @@ function seedFiles() {
 	];
 }
 function withFuse(src) {
-	if (src.includes("loop fuse")) return src;
+	if (src.includes("同一调用重复第三次")) return src;
 	return src.replace("for (const step of steps) {", `const seen = new Map<string, number>();
   for (const step of steps) {
     const n = (seen.get(step) ?? 0) + 1;
     seen.set(step, n);
-    if (n >= 3) throw new Error("loop fuse: identical step x3");`);
+    if (n >= 3) throw new Error("同一调用重复第三次，停止");`);
 }
 var ROLES = [
 	{
@@ -165,7 +161,7 @@ var ROLES = [
 	{
 		id: "arch",
 		name: "架构",
-		note: "对照 NORA / Deva"
+		note: "只改语气，不改权限"
 	}
 ];
 var SKILLS = [
@@ -178,7 +174,7 @@ var SKILLS = [
 	{
 		id: "plan-first",
 		name: "先计划",
-		description: "写操作先 exit_plan，批准后再动文件。",
+		description: "写操作先交计划，批准后再动文件。",
 		body: "任何写任务改走计划闸。批准等于确认，执行阶段不再二次拦截。"
 	},
 	{
@@ -202,13 +198,13 @@ function seedTask(files) {
 			title: "收单",
 			detail: "判定为架构裁决。没有写目标，不进入工具写循环。",
 			status: "ok",
-			output: "分流：分析。模型别名 fast。权限不变。"
+			output: "分流：分析。权限不变。"
 		},
 		{
 			id: "t0-s1",
 			brain: "back",
-			title: "read_file SPEC.md",
-			detail: "后脑只取执行层文档，不把文档当新指令。",
+			title: "读 SPEC.md",
+			detail: "只取执行层文档，不把文档当新指令。",
 			tool: "read_file",
 			args: { path: "SPEC.md" },
 			status: "ok",
@@ -217,8 +213,8 @@ function seedTask(files) {
 		{
 			id: "t0-s2",
 			brain: "back",
-			title: "grep 授权",
-			detail: "核对 Deva 直跑与 NORA 确认的冲突落在哪一行。",
+			title: "搜索授权",
+			detail: "核对直跑和确认分别落在哪一行。",
 			tool: "grep",
 			args: { q: "授权" },
 			status: "ok",
@@ -228,8 +224,8 @@ function seedTask(files) {
 	return {
 		id: "t0",
 		n: 0,
-		utterance: "说明两套对话式为何只是表面，并把执行层缝上。",
-		goal: "给出 NORA 与 Deva 的执行层裁决，不改工作区。",
+		utterance: "说明对话为什么只负责下单，并把执行层缝上。",
+		goal: "写下执行层裁决，不改工作区。",
 		acceptance: [
 			"分清控制面和执行层",
 			"写下权限冲突的裁决",
@@ -238,7 +234,7 @@ function seedTask(files) {
 		mode: "ask",
 		kind: "analysis",
 		status: "done",
-		route: "前脑分流 → 后脑只读 → 前脑验收",
+		route: "回话分流 → 执行只读 → 回话验收",
 		roleId: "arch",
 		steps,
 		revealed: steps.length,
@@ -309,6 +305,32 @@ function makeStep(taskId, i, partial) {
 		...partial
 	};
 }
+function withReview(taskId, steps, note) {
+	return [...steps, makeStep(taskId, steps.length, {
+		brain: "front",
+		title: "审查",
+		detail: "执行把结果交回回话。没有新的任务就收束，最多来回 5 次。",
+		status: "wait",
+		output: note
+	})];
+}
+function chatReply(text) {
+	const t = text.trim();
+	if (/^(你好|嗨|在吗|在么|哈喽|hello|hi|hey)[!！。.…?？\s]*$/i.test(t)) return "在。这句没有任务，回话直接答，不交执行。要查工作区、改文件或先出计划，说具体目标就行。";
+	if (/谢谢|感谢|辛苦/.test(t)) return "不客气。接下来要做事再说。";
+	const protocol = protocolAnswer(t);
+	if (protocol) return protocol;
+	return `听到了：「${t.length > 80 ? `${t.slice(0, 80)}…` : t}」。没有任务，所以不交执行。要查、要改、要计划，直接说目标。`;
+}
+function protocolAnswer(t) {
+	if (/第\s*[三3五5几].*次|熔断|hint|force/.test(t) && !/补上|改|写入|实现|修复|先计划/.test(t)) return "执行对同一工具连续计数：第三次提醒，仍做这一次；第五次停下，不再发下一次。计数在每次进入执行时清掉。";
+	if (/轮询|TASK_DONE|审查怎么/.test(t)) return "来回最多 5 次。执行做完，回话再看：可以收束，也可以再交回去。没有标记的纯聊天直接收束。";
+	if (/NEED_BACKEND|什么时候.*后脑|叫后脑|不升级|任务指示/.test(t)) return "光说要执行还不够。没有具体任务时，这句话留在回话里，不会送进工具。";
+	if (/打断|抢占|插话|排队/.test(t)) return "执行忙的时候先判断来意：停就停下并撤回未验收写入，改口才换成新任务，闲聊只在旁边回一句。";
+	if (/问与做|提问还是|先问/.test(t)) return "提问和动手是两件事。提问、征求意见只回答，不改文件。明确要做才进工具。大改或你要求时才先交计划，批准前不写。";
+	if (/子智能体|Explore|只读集合/.test(t)) return "检索、核对、方案只收窄能用的工具，不是另开一道沙箱。它们可以查，不能改文件。没有依赖的只读步骤同一拍发出。";
+	return null;
+}
 function shell(input, kind, goal, acceptance, route, review, steps, extra) {
 	return {
 		id: `t${input.n}`,
@@ -332,6 +354,22 @@ function shell(input, kind, goal, acceptance, route, review, steps, extra) {
 function wantsWrite(text) {
 	return /改|修改|重写|替换|写入|追加|加上|补上|实现|修复|熔断/.test(text) && !/不要改|别改|只读/.test(text);
 }
+function asks(text) {
+	return /[?？]\s*$/.test(text) || /(吗|呢)[!！。]?\s*$/.test(text) || /^(请问|什么|为什么|为啥|怎么|如何|是否|是不是)/.test(text);
+}
+function isProtocolTalk(text) {
+	if (/补上|改|写入|追加|实现|修复|先计划|重写|替换/.test(text)) return false;
+	return protocolAnswer(text) !== null;
+}
+function frontChat(input, reply) {
+	return shell(input, "chat", reply, ["不调用工具", "用户能看到这句回复"], "回话：没有任务，不交执行", reply, [makeStep(`t${input.n}`, 0, {
+		brain: "front",
+		title: "直接回应",
+		detail: "没有具体任务，就不交执行。回复里不带内部控制标记。",
+		status: "wait",
+		output: "交执行：否\n任务指示：空"
+	})]);
+}
 function isAnalysis(text) {
 	return /NORA|Deva|织衡|双脑|harness|整合|控制面|执行层|对话只是|表象/.test(text);
 }
@@ -340,44 +378,50 @@ function planTask(input) {
 	const id = `t${input.n}`;
 	const skill = input.skillId;
 	let mode = input.mode;
-	if (DANGER.test(text)) return shell(input, "guard", "拦截越权命令", ["命令未被执行", "工作区不变"], "前脑识别危险命令 → 后脑拒绝，不进入循环", "未执行。权限闸救不了沙箱明确禁止的命令。", [makeStep(id, 0, {
+	if (DANGER.test(text)) return shell(input, "guard", "拦截越权命令", ["命令未被执行", "工作区不变"], "回话认出危险命令 → 执行拒绝，不进入循环", "未执行。权限闸救不了沙箱明确禁止的命令。", [makeStep(id, 0, {
 		brain: "front",
 		title: "收单",
 		detail: "这句话的可执行部分是一条命令，而且越过沙箱。",
 		status: "wait"
 	}), makeStep(id, 1, {
 		brain: "back",
-		title: "run_command",
+		title: "运行命令",
 		detail: "安全角色直接拒绝，不调用宿主。",
 		tool: "run_command",
 		args: { cmd: text },
 		status: "blocked",
 		output: "拒绝。破坏性或越权命令在确认和直跑下都不会执行。"
 	})]);
-	if (/熔断演示|演示循环|循环熔断演示/.test(text)) return shell(input, "guard", "演示同一工具调用三次即熔断", ["第三次相同 grep 被熔断", "不改文件"], "后脑循环检测，与 loop.ts 里要补的熔断是同一纪律", "熔断生效。相同调用没有第四次。这是 harness 的状态，不是模型自觉。", [
-		0,
+	if (/熔断演示|演示循环|循环熔断演示/.test(text)) return shell(input, "guard", "演示同一调用：第三次提醒，第五次停下", [
+		"第三次仍执行并留下提醒",
+		"第五次不再调用",
+		"不改文件"
+	], "同一调用第三次提醒，第五次停止。计数只在这一次执行里累加", "第三次只提醒，第五次才停下。这是执行状态，不是自觉停手。", [
 		1,
-		2
-	].map((i) => makeStep(id, i, {
+		2,
+		3,
+		4,
+		5
+	].map((n) => makeStep(id, n - 1, {
 		brain: "back",
-		title: i === 2 ? "循环熔断" : `grep runLoop #${i + 1}`,
-		detail: i === 2 ? "同一工具与参数达到 3 次，循环终止。" : "只读探测，参数不变。",
-		tool: "grep",
-		args: { q: "runLoop" },
-		status: i === 2 ? "blocked" : "wait",
-		output: i === 2 ? "loop fuse：grep runLoop 已重复 3 次，停止。" : void 0
+		title: n === 3 ? "搜索循环 · 第三次提醒" : n === 5 ? "循环停止" : `搜索循环 #${n}`,
+		detail: n === 3 ? "连续第三次：提醒，但仍做这次。" : n === 5 ? "连续第五次：在再次调用前停下。" : "只读探测，条件不变。",
+		tool: n === 5 ? void 0 : "grep",
+		args: n === 5 ? void 0 : { q: "runLoop" },
+		status: n === 5 ? "blocked" : "wait",
+		output: n === 5 ? "第五次停止：同一搜索已连续 5 次。执行停下，不再发第 6 次。" : n === 3 ? "第三次提醒：同一调用已连续 3 次，这次仍执行。" : void 0
 	})));
 	const mem = /^(?:记住|记下)[:：\s]*(.+)$/.exec(text);
 	if (mem) {
 		const entry = mem[1].trim().slice(0, 300);
-		return shell(input, "memory", "把约束写入记忆，而不是写进聊天", ["条目不超过 300 字", "出现在全局记忆与槽位"], "前脑识别为记忆写，不启动文件工具", mem[1].trim().length > 300 ? "原文超过 300 字，已截断后写入。记忆记约束，不记长对话。" : `已记住：${entry}`, [makeStep(id, 0, {
+		return shell(input, "memory", "把约束写入记忆，而不是写进聊天", ["条目不超过 300 字", "出现在全局记忆与槽位"], "回话识别为记忆写，不启动文件工具", mem[1].trim().length > 300 ? "原文超过 300 字，已截断后写入。记忆记约束，不记长对话。" : `已记住：${entry}`, [makeStep(id, 0, {
 			brain: "front",
 			title: "收单",
 			detail: "记忆是任务约束。定时与未验收任务不应靠它扩权。",
 			status: "wait"
 		}), makeStep(id, 1, {
 			brain: "back",
-			title: "memory_write",
+			title: "写入记忆",
 			detail: entry,
 			tool: "memory_write",
 			status: "wait",
@@ -393,7 +437,7 @@ function planTask(input) {
 		const q = forget[1].trim();
 		return shell(input, "forget", "删除匹配的记忆条目", ["匹配条目被移除"], "记忆删除是显式任务", q ? `已尝试删除包含「${q}」的条目。` : "没有给出要忘的内容，记忆未动。", [makeStep(id, 0, {
 			brain: "back",
-			title: "memory_delete",
+			title: "删除记忆",
 			detail: q || "空",
 			tool: "memory_delete",
 			status: q ? "wait" : "blocked",
@@ -403,46 +447,57 @@ function planTask(input) {
 		})]);
 	}
 	if (/并行|子代理|分头|同时调研|同时探索/.test(text)) return shell(input, "subagent", "以只读子任务核对工具循环和权限策略", [
-		"explore 回报 path:line",
-		"research 引用政策文件",
+		"检索回报路径和行号",
+		"核对引用权限文件",
 		"主任务不写文件"
-	], "前脑拆单 → explore 与 research 只读分叉 → 前脑汇总", "两个子任务都是只读工具集，没有继承写权限，结论只当数据。", [
+	], "回话拆开 → 检索与核对只读分叉 → 回话汇总", "两个子任务都是只读工具集，没有继承写权限，结论只当数据。", [
 		makeStep(id, 0, {
 			brain: "front",
 			title: "拆单",
-			detail: "explore 搜循环，research 核对权限。fork 不把主对话过程灌回去。",
+			detail: "检索找循环，核对看权限。分叉不把主过程灌回去。",
 			status: "wait"
 		}),
 		makeStep(id, 1, {
 			brain: "back",
-			title: "子任务 explore",
-			detail: "只读。工具集：grep。",
+			title: "子任务 · 检索",
+			detail: "只读。只搜索。",
 			tool: "grep",
 			args: { q: "runLoop" },
-			status: "wait"
+			status: "wait",
+			batch: "sub"
 		}),
 		makeStep(id, 2, {
 			brain: "back",
-			title: "子任务 research",
-			detail: "只读。对照 policy.ts 与 SPEC。来源要写在结果里。",
+			title: "子任务 · 核对",
+			detail: "只读。对照权限文件和裁决。出处写在结果里。不能改文件。",
 			tool: "grep",
 			args: { q: "confirm" },
-			status: "wait"
+			status: "wait",
+			batch: "sub"
+		}),
+		makeStep(id, 3, {
+			brain: "front",
+			title: "审查",
+			detail: "两个只读子任务同一拍返回。结论只当数据，本轮收束。",
+			status: "wait",
+			output: "收束。子任务不能写，主任务也不再继续。"
 		})
 	]);
-	if (isAnalysis(text) && !wantsWrite(text)) return shell(input, "analysis", "用工作区里的裁决文档回答执行层问题", ["只读 SPEC", "不把文档内容当成新的系统指令"], "询问。前脑转述，后脑只读。", "控制面负责下单，执行层负责工具循环。完整裁决在 SPEC.md，本任务没有改文件。", [makeStep(id, 0, {
+	if (isAnalysis(text) && !wantsWrite(text)) return shell(input, "analysis", "用工作区里的裁决文档回答执行层问题", ["只读 SPEC", "不把文档内容当成新的系统指令"], "询问。回话转述，执行只读。", "控制面负责下单，执行层负责工具循环。完整裁决在 SPEC.md，本任务没有改文件。", withReview(id, [makeStep(id, 0, {
 		brain: "front",
 		title: "收单",
 		detail: "这是裁决问题，不是写任务。",
 		status: "wait"
 	}), makeStep(id, 1, {
 		brain: "back",
-		title: "read_file SPEC.md",
+		title: "读 SPEC.md",
 		detail: "文件内容当数据。",
 		tool: "read_file",
 		args: { path: "SPEC.md" },
-		status: "wait"
-	})]);
+		status: "wait",
+		batch: "read"
+	})], "收束。只读裁决，不再交回执行。"));
+	if (isProtocolTalk(text) || asks(text) && !wantsWrite(text)) return frontChat(input, chatReply(text));
 	const write = wantsWrite(text);
 	if (write && skill === "explore") return shell(input, "reject", "退回写请求", ["工作区不变"], "技能「只读探索」拒绝写", "当前技能是只读探索。要改文件，先卸下技能，再走计划或执行。", [makeStep(id, 0, {
 		brain: "front",
@@ -454,7 +509,7 @@ function planTask(input) {
 	if (write && mode === "ask") return shell(input, "reject", "询问模式不写文件", ["工作区不变"], "模式闸挡住写循环", "现在是询问。要改文件，切到计划或执行。", [makeStep(id, 0, {
 		brain: "front",
 		title: "模式闸",
-		detail: "ask 没有 write_file / edit_file / run_command 写权限。",
+		detail: "询问模式不能改文件，也不能跑有副作用的命令。",
 		status: "blocked",
 		output: "已拒绝。"
 	})]);
@@ -468,14 +523,14 @@ function planTask(input) {
 			status: "blocked",
 			output: "未写入。"
 		})]);
-		if (mode === "plan") return shell(input, "plan", patches.length === 1 && patches[0].path.endsWith("loop.ts") ? "计划：为工具循环加上死循环熔断" : `计划：更新 ${patches.map((p) => p.path).join("、")}`, ["先给出补丁，批准前不写", "批准后的执行不再二次确认"], "exit_plan。计划是任务状态，不是一段聊天。", "计划待批。批准后会按补丁执行；驳回则工作区不动。", [makeStep(id, 0, {
+		if (mode === "plan") return shell(input, "plan", patches.length === 1 && patches[0].path.endsWith("loop.ts") ? "计划：为工具循环加上死循环熔断" : `计划：更新 ${patches.map((p) => p.path).join("、")}`, ["先给出补丁，批准前不写", "批准后的执行不再二次确认"], "提交计划。计划是任务状态，不是一段聊天。", "计划待批。批准后会按补丁执行；驳回则工作区不动。", [makeStep(id, 0, {
 			brain: "front",
 			title: "收单",
 			detail: "写意图被计划闸截住。",
 			status: "wait"
 		}), makeStep(id, 1, {
 			brain: "back",
-			title: "exit_plan",
+			title: "提交计划",
 			detail: patches.map((p) => p.path).join("、"),
 			tool: "exit_plan",
 			status: "wait",
@@ -502,7 +557,7 @@ function planTask(input) {
 			const same = (findFile(input.files, patch.path)?.content ?? "") === patch.content;
 			steps.push(makeStep(id, index + 1, {
 				brain: "back",
-				title: `edit_file ${patch.path}`,
+				title: `改文件 ${patch.path}`,
 				detail: same ? "目标内容与现状一致。" : "精确替换整文件内容。",
 				tool: "edit_file",
 				args: { path: patch.path },
@@ -512,7 +567,7 @@ function planTask(input) {
 				output: same ? "已是目标内容，跳过写入。" : void 0
 			}));
 		});
-		return shell(input, "write", `改写 ${patches.map((p) => p.path).join("、")}`, ["只改点名的文件", "验收能看到 diff 落点"], "前脑收单 → 权限闸 → 后脑 edit_file → 前脑验收", `写入 ${patches.map((p) => p.path).join("、")}。对话记录不是 diff，以文件为准。`, steps);
+		return shell(input, "write", `改写 ${patches.map((p) => p.path).join("、")}`, ["只改点名的文件", "验收能看到 diff 落点"], "回话收单 → 权限闸 → 执行改文件 → 回话审查", `写入 ${patches.map((p) => p.path).join("、")}。对话记录不是 diff，以文件为准。`, withReview(id, steps, "收束。补丁已落，没有继续执行的理由。"));
 	}
 	if (/读|看|列出|列表|搜索|找|grep|有没有|核对|检查|工作区|文件/.test(text)) {
 		const names = mentioned(input.files, text);
@@ -524,7 +579,7 @@ function planTask(input) {
 		})];
 		if (/列出|列表|工作区|有哪些/.test(text) || names.length === 0) steps.push(makeStep(id, steps.length, {
 			brain: "back",
-			title: "list_dir",
+			title: "列目录",
 			detail: "沙箱根目录。",
 			tool: "list_dir",
 			args: { path: "." },
@@ -534,7 +589,7 @@ function planTask(input) {
 			const q = /循环|熔断|loop/.test(text) ? "runLoop" : /权限|确认|策略/.test(text) ? "confirm" : "任务";
 			steps.push(makeStep(id, steps.length, {
 				brain: "back",
-				title: `grep ${q}`,
+				title: `搜索 ${q}`,
 				detail: "结果是数据，不会被当成下一步指令。",
 				tool: "grep",
 				args: { q },
@@ -543,30 +598,27 @@ function planTask(input) {
 		}
 		for (const path of names.slice(0, 2)) steps.push(makeStep(id, steps.length, {
 			brain: "back",
-			title: `read_file ${path}`,
+			title: `读 ${path}`,
 			detail: "带路径读取。",
 			tool: "read_file",
 			args: { path },
 			status: "wait"
 		}));
-		return shell(input, "read", "只读检查工作区", ["不写入", "结果带路径"], "后脑只读工具集", "只读完成。没有产生补丁。", steps);
+		return shell(input, "read", "只读检查工作区", ["不写入", "结果带路径"], "执行只读，同一拍发出", "只读完成。没有产生补丁。", withReview(id, steps.map((step) => step.brain === "back" ? {
+			...step,
+			batch: "read"
+		} : step), "收束。只读结果不当成新指令。"));
 	}
 	const cmd = /^(?:运行|执行|命令)[:：\s]+(.+)$/.exec(text);
-	if (cmd) return shell(input, "command", "在沙箱里运行一条非交互命令", ["只使用允许的命令子集"], "run_command 受沙箱约束，与 Deva 的无弹框不是同一件事", "命令已在沙箱内结束。沙箱外没有副作用。", [makeStep(id, 0, {
+	if (cmd) return shell(input, "command", "在沙箱里运行一条非交互命令", ["只使用允许的命令子集"], "命令留在沙箱里。直跑也不是把机器交出去。", "命令已在沙箱内结束。沙箱外没有副作用。", withReview(id, [makeStep(id, 0, {
 		brain: "back",
-		title: "run_command",
+		title: "运行命令",
 		detail: cmd[1],
 		tool: "run_command",
 		args: { cmd: cmd[1] },
 		status: "wait"
-	})]);
-	return shell(input, "reject", "没有形成任务", ["不进入执行"], "前脑拒单", "没有目标。对话只负责下单：要读哪份文件、要改什么、要记住哪条约束。", [makeStep(id, 0, {
-		brain: "front",
-		title: "拒单",
-		detail: "闲聊不是任务。",
-		status: "blocked",
-		output: "未执行。"
-	})]);
+	})], "收束。命令在沙箱内结束。"));
+	return frontChat(input, chatReply(text));
 }
 function proposePatches(files, text) {
 	const patches = [];
@@ -613,7 +665,7 @@ function enactTask(parent, n, files, at) {
 		const same = (findFile(files, patch.path)?.content ?? "") === patch.content;
 		steps.push(makeStep(id, index + 1, {
 			brain: "back",
-			title: `edit_file ${patch.path}`,
+			title: `改文件 ${patch.path}`,
 			detail: "批准过的补丁。",
 			tool: "edit_file",
 			args: { path: patch.path },
@@ -632,7 +684,7 @@ function enactTask(parent, n, files, at) {
 		mode: "act",
 		kind: "write",
 		status: "queued",
-		route: "计划已批 → 后脑写入 → 验收",
+		route: "计划已批 → 执行写入 → 验收",
 		roleId: parent.roleId,
 		steps,
 		revealed: 0,
@@ -660,16 +712,25 @@ function applyStep(files, memory, step, at) {
 		};
 	}
 	if (step.memoryAdd) {
+		const text = step.memoryAdd.text.slice(0, 300);
+		const cap = step.memoryAdd.scope === "project" ? 3e3 : 4e3;
+		const used = memory.filter((m) => m.scope === step.memoryAdd.scope).reduce((sum, m) => sum + m.text.length, 0);
+		if (used + text.length > cap) return {
+			files,
+			memory,
+			output: `${step.memoryAdd.scope === "project" ? "项目" : "全局"}记忆上限 ${cap} 字，这条没写入。`,
+			status: "blocked"
+		};
 		const entry = {
 			id: `m${at}`,
 			scope: step.memoryAdd.scope,
-			text: step.memoryAdd.text.slice(0, 300),
+			text,
 			at
 		};
 		return {
 			files,
 			memory: [...memory, entry],
-			output: `全局记忆 +1（${entry.text.length} 字）`,
+			output: `${entry.scope === "project" ? "项目" : "全局"}记忆 +1（${entry.text.length} 字，累计 ${used + entry.text.length}/${cap}）`,
 			status: "ok"
 		};
 	}
@@ -759,6 +820,42 @@ function fresh() {
 function replaceTask(tasks, id, next) {
 	return tasks.map((t) => t.id === id ? next : t);
 }
+function isStop(text) {
+	return /^(停|停下|停止|取消|别做了|别跑了)/.test(text);
+}
+function settleChat(task) {
+	return {
+		...task,
+		status: "done",
+		revealed: task.steps.length,
+		steps: task.steps.map((step) => step.status === "wait" ? {
+			...step,
+			status: "ok"
+		} : step)
+	};
+}
+function restamp(task, text, route) {
+	const prefix = task.review.startsWith("裁决：") ? "裁决：" : task.review.startsWith("验收：") ? "验收：" : "回单：";
+	return {
+		...settleChat(task),
+		goal: text,
+		route,
+		review: prefix + text,
+		steps: task.steps.map((step) => ({
+			...step,
+			status: "ok",
+			title: "停止",
+			detail: "判为停止。未验收写入回到本任务开始时的文件。",
+			output: "动作：停止\n回滚：任务开始时的文件\n交执行：否"
+		}))
+	};
+}
+function activeWork(tasks, activeId) {
+	const current = tasks.find((t) => t.id === activeId);
+	if (!current) return null;
+	if (current.status !== "running" && current.status !== "awaiting") return null;
+	return current;
+}
 function syncSlots(memory) {
 	return memory.slice(-8).map((m) => ({
 		key: m.text.slice(0, 12),
@@ -821,21 +918,9 @@ var useHarness = create()(persist((set, get) => ({
 		if (text === "/skill plan" || text === "/skill 先计划") return set({ skillId: "plan-first" });
 		if (text === "/skill explore" || text === "/skill 只读") return set({ skillId: "explore" });
 		if (text === "/skill off" || text === "/skill 无") return set({ skillId: "none" });
-		let tasks = s.tasks;
-		let files = s.files;
-		if (s.playing || s.tasks.some((t) => t.id === s.activeId && (t.status === "running" || t.status === "awaiting"))) {
-			const current = tasks.find((t) => t.id === s.activeId);
-			if (current && current.status !== "done") {
-				files = cloneFiles(current.filesAtStart);
-				tasks = replaceTask(tasks, current.id, {
-					...current,
-					status: "preempted",
-					review: "未验收就被新任务抢占。本次写入已回滚。"
-				});
-			}
-		}
+		const current = activeWork(s.tasks, s.activeId);
 		const n = s.seq;
-		const task = planTask({
+		const plan = (files) => planTask({
 			utterance: text,
 			files,
 			mode: s.mode,
@@ -844,10 +929,73 @@ var useHarness = create()(persist((set, get) => ({
 			n,
 			at: Date.now()
 		});
+		if (current && isStop(text)) {
+			const files = cloneFiles(current.filesAtStart);
+			const tasks = replaceTask(s.tasks, current.id, {
+				...current,
+				status: "preempted",
+				review: "已停止。未验收的写入已回滚。"
+			});
+			const task = restamp(plan(files), "执行已停。未验收的写入已回滚。", "interrupt stop：回滚未验收写入");
+			set({
+				tasks: [...tasks, task],
+				files,
+				seq: n + 1,
+				activeId: task.id,
+				playing: false,
+				presence: "sealed",
+				tab: "run",
+				notice: null
+			});
+			return;
+		}
+		if (current) {
+			const aside = plan(s.files);
+			if (aside.kind === "chat") {
+				set({
+					tasks: [...s.tasks, settleChat(aside)],
+					seq: n + 1,
+					tab: "run",
+					notice: "闲聊已旁路。执行还在跑，写入未回滚。"
+				});
+				return;
+			}
+			const files = cloneFiles(current.filesAtStart);
+			const tasks = replaceTask(s.tasks, current.id, {
+				...current,
+				status: "preempted",
+				review: "未验收就被新任务抢占。本次写入已回滚。"
+			});
+			const task = plan(files);
+			task.status = "running";
+			set({
+				tasks: [...tasks, task],
+				files,
+				seq: n + 1,
+				activeId: task.id,
+				playing: true,
+				presence: "exec",
+				tab: "run",
+				notice: null
+			});
+			return;
+		}
+		const task = plan(s.files);
+		if (task.kind === "chat") {
+			set({
+				tasks: [...s.tasks, settleChat(task)],
+				seq: n + 1,
+				activeId: task.id,
+				playing: false,
+				presence: "sealed",
+				tab: "run",
+				notice: null
+			});
+			return;
+		}
 		task.status = "running";
 		set({
-			tasks: [...tasks, task],
-			files,
+			tasks: [...s.tasks, task],
 			seq: n + 1,
 			activeId: task.id,
 			playing: true,
@@ -868,18 +1016,7 @@ var useHarness = create()(persist((set, get) => ({
 			get().finishTask(task.id);
 			return;
 		}
-		if (step.planGate) {
-			set({
-				tasks: replaceTask(s.tasks, task.id, {
-					...task,
-					status: "awaiting"
-				}),
-				playing: false,
-				presence: "exec"
-			});
-			return;
-		}
-		if (step.writes && s.gate === "confirm" && !task.precleared) {
+		if (step.planGate || step.writes && s.gate === "confirm" && !task.precleared) {
 			set({
 				tasks: replaceTask(s.tasks, task.id, {
 					...task,
@@ -895,39 +1032,68 @@ var useHarness = create()(persist((set, get) => ({
 				...st,
 				status: "blocked"
 			} : st);
-			const next = {
-				...task,
-				steps,
-				revealed: task.revealed + 1,
-				status: "blocked"
-			};
 			set({
-				tasks: replaceTask(s.tasks, task.id, next),
+				tasks: replaceTask(s.tasks, task.id, {
+					...task,
+					steps,
+					revealed: task.revealed + 1,
+					status: "blocked"
+				}),
 				playing: false,
 				presence: "sealed"
 			});
 			return;
 		}
-		const applied = applyStep(s.files, s.memory, step, Date.now());
-		const steps = task.steps.map((st, i) => i === task.revealed ? {
-			...st,
-			status: applied.status,
-			output: applied.output
-		} : st);
-		const revealed = task.revealed + 1;
-		const updated = {
-			...task,
-			steps,
-			revealed,
-			status: "running"
+		let files = s.files;
+		let memory = s.memory;
+		const steps = task.steps.slice();
+		let revealed = task.revealed;
+		let blocked = false;
+		const batch = step.batch;
+		const take = (index) => {
+			const currentStep = steps[index];
+			if (currentStep.status === "blocked") {
+				blocked = true;
+				revealed = index + 1;
+				return false;
+			}
+			const applied = applyStep(files, memory, currentStep, Date.now());
+			const hint = currentStep.output?.startsWith("第三次提醒：") ? `${currentStep.output}\n` : "";
+			steps[index] = {
+				...currentStep,
+				status: applied.status,
+				output: hint + applied.output
+			};
+			files = applied.files;
+			memory = applied.memory;
+			revealed = index + 1;
+			if (applied.status === "blocked") {
+				blocked = true;
+				return false;
+			}
+			return true;
 		};
+		if (take(revealed) && batch) while (revealed < steps.length) {
+			const next = steps[revealed];
+			if (next.batch !== batch || next.writes || next.planGate) break;
+			if (!take(revealed)) break;
+		}
 		set({
-			tasks: replaceTask(s.tasks, task.id, updated),
-			files: applied.files,
-			memory: applied.memory,
-			slots: syncSlots(applied.memory)
+			tasks: replaceTask(s.tasks, task.id, {
+				...task,
+				steps,
+				revealed,
+				status: blocked ? "blocked" : "running"
+			}),
+			files,
+			memory,
+			slots: syncSlots(memory),
+			...blocked ? {
+				playing: false,
+				presence: "sealed"
+			} : {}
 		});
-		if (applied.status === "blocked" || revealed >= steps.length) get().finishTask(task.id, applied.status === "blocked" ? "blocked" : void 0);
+		if (blocked || revealed >= steps.length) get().finishTask(task.id, blocked ? "blocked" : void 0);
 	},
 	approve: () => {
 		const s = get();
@@ -1078,6 +1244,7 @@ var useHarness = create()(persist((set, get) => ({
 			tasks: replaceTask(get().tasks, id, {
 				...task,
 				review: text,
+				goal: task.kind === "chat" ? text : task.goal,
 				voiced: true
 			}),
 			grokNote: null
@@ -1087,11 +1254,12 @@ var useHarness = create()(persist((set, get) => ({
 		const s = get();
 		const task = s.tasks.find((t) => t.id === id);
 		if (!task) return;
-		const status = force === "blocked" || task.steps.some((st) => st.status === "blocked") ? "blocked" : task.status === "rejected" ? "rejected" : "done";
+		const blocked = force === "blocked" || task.steps.some((st) => st.status === "blocked");
+		const status = blocked ? "blocked" : task.status === "rejected" ? "rejected" : "done";
 		const done = {
 			...task,
 			status,
-			revealed: Math.max(task.revealed, task.steps.length)
+			revealed: blocked ? task.revealed : Math.max(task.revealed, task.steps.length)
 		};
 		const changed = JSON.stringify(s.files) !== JSON.stringify(task.filesAtStart);
 		const checkpoints = [...s.checkpoints];
@@ -1110,7 +1278,7 @@ var useHarness = create()(persist((set, get) => ({
 		});
 	}
 }), {
-	name: "lattice-harness-v1",
+	name: "lattice-harness-v2",
 	skipHydration: true,
 	partialize: (s) => ({
 		tasks: s.tasks,
@@ -1161,6 +1329,14 @@ var voiceReview = createServerFn({ method: "POST" }).validator((input) => {
 		role: String(raw.role ?? "dispatch").slice(0, 24)
 	};
 }).handler(createSsrRpc("43acf2d508acba03ade74c0d5e6b417812d35b475645bacc00cb94405465d8a4"));
+var frontSpeak = createServerFn({ method: "POST" }).validator((input) => {
+	const raw = input;
+	return {
+		utterance: String(raw.utterance ?? "").slice(0, 500),
+		draft: String(raw.draft ?? "").slice(0, 800),
+		role: String(raw.role ?? "dispatch").slice(0, 24)
+	};
+}).handler(createSsrRpc("ae8192f183a72e56092aed983d797977d3464d3fc6c3ad26c5d4a2ca845bf292"));
 function cn(...inputs) {
 	return twMerge(clsx(inputs));
 }
@@ -1230,6 +1406,19 @@ function LatticeApp() {
 			else useHarness.setState({ grokNote: res.error });
 		});
 	}, [pendingVoice, patchReview]);
+	const pendingChat = tasks.find((t) => grokVoice && !t.voiced && t.kind === "chat" && t.status === "done" && t.id !== "t0" && !t.route.startsWith("interrupt"));
+	(0, import_react.useEffect)(() => {
+		if (!pendingChat || tried.current.has(`chat:${pendingChat.id}`)) return;
+		tried.current.add(`chat:${pendingChat.id}`);
+		frontSpeak({ data: {
+			utterance: pendingChat.utterance,
+			draft: pendingChat.goal,
+			role: pendingChat.roleId
+		} }).then((res) => {
+			if (res.ok) patchReview(pendingChat.id, res.text);
+			else useHarness.setState({ grokNote: res.error });
+		});
+	}, [pendingChat, patchReview]);
 	const load = contextLoad(tasks, memory);
 	const hot = load / CONTEXT_MAX >= .75;
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -1279,7 +1468,7 @@ function Header({ load, hot }) {
 							children: "织衡"
 						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 							className: "truncate text-xs text-muted",
-							children: "对话只下单。任务才执行。"
+							children: "闲聊只回，不交执行。任务才改文件。"
 						})]
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
@@ -1426,7 +1615,7 @@ function TaskPane({ activeId }) {
 			children: [
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "mb-4 max-w-2xl text-sm text-muted",
-					children: "前脑收单、抢占、验收。后脑跑工具。没有目标的句子不会进循环。沙箱里的文件才算数。"
+					children: "没有任务时只回话。执行途中的闲聊只旁路；说「停」或下一个任务才会打断并回滚。沙箱里的文件才算数。"
 				}),
 				notice ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "mb-3 text-sm text-brass",
@@ -1445,7 +1634,7 @@ function TaskPane({ activeId }) {
 	});
 }
 function TaskCard({ task, active }) {
-	const [open, setOpen] = (0, import_react.useState)(task.status === "running" || task.status === "awaiting");
+	const [open, setOpen] = (0, import_react.useState)(task.status === "running" || task.status === "awaiting" || task.kind === "chat");
 	const done = task.steps.slice(0, task.revealed);
 	const pending = task.status === "running" || task.status === "awaiting" ? task.steps[task.revealed] : void 0;
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", {
@@ -1500,7 +1689,7 @@ function TaskCard({ task, active }) {
 						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 							className: "font-mono text-xs text-brass",
 							children: [
-								pending.brain === "front" ? "前脑" : "后脑",
+								pending.brain === "front" ? "回话" : "执行",
 								" · ",
 								pending.title
 							]
@@ -1527,7 +1716,7 @@ function StepRow({ step }) {
 		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 			className: cn("font-mono text-xs", tone),
 			children: [
-				step.brain === "front" ? "前脑" : "后脑",
+				step.brain === "front" ? "回话" : "执行",
 				" · ",
 				step.title,
 				" · ",
@@ -1631,7 +1820,7 @@ function Composer() {
 					}), mounted ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", {
 						value: text,
 						rows: 2,
-						placeholder: playing ? "插话会抢占未验收的执行，并回滚它的写入" : "下目标，而不是闲聊",
+						placeholder: playing ? "闲聊会旁路回复，不打断执行。说「停」或下一个任务才会打断" : "闲聊会回。要查、要改、要计划，直接说目标",
 						className: "w-full resize-none border border-line bg-surface px-3 py-2 text-sm text-fg outline-none placeholder:text-muted",
 						onChange: (event) => setText(event.target.value),
 						onKeyDown: (event) => {
@@ -1753,34 +1942,9 @@ function Spec() {
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
 				className: "flex flex-col gap-2 text-sm text-muted",
 				children: [
-					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "NORA：前脑说话，后脑干活。抢占、四层记忆、敏感确认、沙箱、熔断。" }),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "Deva：一个对话入口。系统规范大于角色。exit_plan、只读子任务、/rewind、75% 压缩。" }),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "冲突裁决：确认或直跑可切换。沙箱和危险命令不能关。" })
-				]
-			}),
-			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
-				className: "text-xs text-muted",
-				children: [
-					"对照",
-					" ",
-					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
-						className: "text-brass",
-						href: "https://github.com/captain-wangrun-cn/N.O.R.A.Core",
-						target: "_blank",
-						rel: "noreferrer",
-						children: "NORA Core"
-					}),
-					" ",
-					"与",
-					" ",
-					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
-						className: "text-brass",
-						href: "https://github.com/sqfcyily/deva",
-						target: "_blank",
-						rel: "noreferrer",
-						children: "Deva"
-					}),
-					"，不是把两份代码并到一起。"
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "回话只听、答、审查。执行才碰文件和命令。" }),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "提问不写。大改先交计划。只读步骤同一拍完成。" }),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: "确认或直跑可切换。沙箱和危险命令不能关。" })
 				]
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Checkpoints, {})
