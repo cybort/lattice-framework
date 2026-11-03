@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "织衡 Lattice",
+      "hasCanvas": false,
+      "bodyTextLen": 946,
+      "bodyTextHash": "e0edadeae0c56f7056e983512b989edb6eebd813d137e53145c6e65572d5755e",
+      "bodyTextPrefix": "织衡 对话只下单。任务才执行。 段已封存 859/8000 压缩 重置 编排验收 询问 计划 执行 确认 直跑 调度 现场 架构",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "织衡 Lattice",
+      "hasCanvas": false,
+      "bodyTextLen": 325,
+      "bodyTextHash": "7104d72fac69d5b4dcec139cac9b9b428a55c8cc9133f48887e2798c6a6a253b",
+      "bodyTextPrefix": "织衡 对话只下单。任务才执行。 段已封存 859/8000 压缩 重置 编排验收 询问 计划 执行 确认 直跑 调度 现场 架构",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
